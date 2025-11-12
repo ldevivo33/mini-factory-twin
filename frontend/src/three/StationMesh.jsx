@@ -9,16 +9,18 @@ const colors = {
 }
 
 export default function StationMesh({ position = [0, 0.5, 0], station }) {
-  const status = station?.status ?? 0
-  const blocked = !!station?.blocked
-  const starved = !!station?.starved
+  // Support both legacy and new snapshot shapes
+  const stateStr = station?.state
+  const status = station?.status ?? (stateStr === 'busy' ? 1 : stateStr === 'blocked' ? 2 : 0)
+  const blocked = station?.blocked ?? (stateStr === 'blocked')
+  const starved = station?.starved ?? (stateStr === 'starved')
 
   const color = useMemo(() => {
-    if (status === 1) return colors.running
+    if (status === 1 || stateStr === 'busy') return colors.running
     if (blocked) return colors.blocked
     if (starved) return colors.starved
     return colors.idle
-  }, [status, blocked, starved])
+  }, [status, blocked, starved, stateStr])
 
   const material = useMemo(() => new MeshStandardMaterial({ color }), [color])
 
@@ -28,4 +30,3 @@ export default function StationMesh({ position = [0, 0.5, 0], station }) {
     </mesh>
   )
 }
-

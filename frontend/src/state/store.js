@@ -1,65 +1,69 @@
 import { create } from 'zustand'
-import { getState, postReset, postStep } from '../api/client'
-
-const clampAction = (a) => (a < 0 ? 0 : a > 2 ? 2 : a)
+import { simReset, simStep, simState, simSummary } from '../api/client'
 
 export const useFactoryStore = create((set, get) => ({
-  sessionId: 'default',
-  sim: null, // { obs, info }
-  lastReward: 0,
-  cumulativeThroughput: 0,
-  selectedAction: 1, // 0=slow,1=nominal,2=fast
-  polling: false,
-  _pollTimer: null,
+  // Config we send with /sim/reset (store to normalize buffers etc.)
+  config: {
+    seed: null,
+    n_jobs: 100,
+    n_stations: 3,
+    buffer_caps: [5, 5],
+    proc_means: [4.0, 5.0, 4.5],
+    proc_dists: 'uniform',
+    util_alpha: 0.1,
+  },
 
-  setAction: (a) => set({ selectedAction: clampAction(a) }),
+  // Control
+  running: false,
+
+  // Snapshots and summaries
+  snapshot: null, // last snapshot
+  prevSnapshot: null,
+  summary: null,
+
+  setConfig: (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
+
+  reset: async () => {
+    const data = await simReset(get().config)
+    set({ prevSnapshot: null, snapshot: data, summary: null })
+  },
 
   fetchState: async () => {
-    try {
-      const data = await getState()
-      set((s) => ({
-        sim: data,
-        lastReward: data?.info?.reward ?? s.lastReward
-      }))
-    } catch (e) {
-      // swallow for now; can add toast/log later
+    const data = await simState()
+    set((s) => ({ prevSnapshot: s.snapshot, snapshot: data }))
+  },
+
+  begin: async () => {
+    if (get().running) return
+    // Ensure sim is initialized
+    if (!get().snapshot) {
+      await get().reset()
+    }
+    set({ running: true, summary: null })
+    let lastSummaryAt = 0
+    const SUMMARY_EVERY_MS = 500
+    // Step loop until jobs complete
+    while (get().running) {
+      try {
+        const snap = await simStep(1.0)
+        set((s) => ({ prevSnapshot: s.snapshot, snapshot: snap }))
+        const now = Date.now()
+        if (now - lastSummaryAt >= SUMMARY_EVERY_MS) {
+          const sum = await simSummary()
+          set({ summary: sum })
+          lastSummaryAt = now
+          if (sum && typeof sum.total_jobs === 'number' && sum.total_jobs > 0 && sum.jobs_completed >= sum.total_jobs) {
+            set({ running: false })
+            break
+          }
+        }
+        await new Promise((r) => setTimeout(r, 150))
+      } catch (e) {
+        set({ running: false })
+        break
+      }
     }
   },
 
-  reset: async (seed = null) => {
-    const data = await postReset(seed)
-    set({
-      sessionId: data.session_id,
-      sim: { obs: data.obs, info: data.info },
-      lastReward: data.info?.reward ?? 0,
-      cumulativeThroughput: 0
-    })
-  },
-
-  step: async (action = null) => {
-    const a = action == null ? get().selectedAction : clampAction(action)
-    const data = await postStep(a, get().sessionId)
-    set((s) => ({
-      sim: { obs: data.obs, info: data.info },
-      lastReward: data.reward,
-      cumulativeThroughput: s.cumulativeThroughput + (data.info?.throughput || 0)
-    }))
-  },
-
-  startPolling: () => {
-    const running = get().polling
-    if (running) return
-    set({ polling: true })
-    const id = setInterval(() => {
-      // Auto-step the simulation at 1 Hz using the selected action
-      get().step(get().selectedAction)
-    }, 1000)
-    set({ _pollTimer: id })
-  },
-
-  stopPolling: () => {
-    const id = get()._pollTimer
-    if (id) clearInterval(id)
-    set({ polling: false, _pollTimer: null })
-  }
+  stop: () => set({ running: false }),
 }))

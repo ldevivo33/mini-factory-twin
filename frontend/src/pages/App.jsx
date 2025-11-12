@@ -6,12 +6,10 @@ import { useFactoryStore } from '../state/store.js'
 
 export default function App() {
   const reset = useFactoryStore((s) => s.reset)
-  const startPolling = useFactoryStore((s) => s.startPolling)
 
   useEffect(() => {
     reset(null)
-    startPolling()
-  }, [reset, startPolling])
+  }, [reset])
 
   return (
     <div className="layout">
@@ -28,4 +26,3 @@ export default function App() {
     </div>
   )
 }
-

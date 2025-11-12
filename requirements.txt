@@ -5,3 +5,4 @@ psycopg[binary]
 gymnasium
 numpy
 psycopg2-binary
+simpy

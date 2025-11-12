@@ -8,18 +8,28 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-export const getState = async () => {
-  const { data } = await api.get('/state')
+// DES endpoints
+export const simReset = async (payload = {}) => {
+  const { data } = await api.post('/sim/reset', payload)
   return data
 }
 
-export const postReset = async (seed = null) => {
-  const { data } = await api.post('/reset', seed !== null ? { seed } : {})
+export const simStep = async (speed_mult = 1.0) => {
+  const { data } = await api.post('/sim/step', { speed_mult })
   return data
 }
 
-export const postStep = async (action = 1, session_id = 'default') => {
-  const { data } = await api.post('/step', { action, session_id })
+export const simState = async () => {
+  const { data } = await api.get('/sim/state')
   return data
 }
 
+export const simRunToFinish = async () => {
+  const { data } = await api.post('/sim/run_to_finish')
+  return data
+}
+
+export const simSummary = async () => {
+  const { data } = await api.get('/sim/summary')
+  return data
+}

@@ -1,42 +1,45 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useFactoryStore } from '../state/store.js'
 
 export default function ControlsPanel() {
-  const { selectedAction, setAction, reset, step, startPolling, stopPolling, polling } = useFactoryStore((s) => ({
-    selectedAction: s.selectedAction,
-    setAction: s.setAction,
+  const { reset, begin, stop, running, config, setConfig } = useFactoryStore((s) => ({
     reset: s.reset,
-    step: s.step,
-    startPolling: s.startPolling,
-    stopPolling: s.stopPolling,
-    polling: s.polling
+    begin: s.begin,
+    stop: s.stop,
+    running: s.running,
+    config: s.config,
+    setConfig: s.setConfig,
   }))
 
-  const onReset = useCallback(() => { reset(null) }, [reset])
-  const onStep = useCallback(() => { step(selectedAction) }, [step, selectedAction])
-  const onSpeed = useCallback((e) => setAction(parseInt(e.target.value, 10)), [setAction])
+  const [jobs, setJobs] = useState(config.n_jobs)
+  const [cap1, setCap1] = useState(config.buffer_caps[0])
+  const [cap2, setCap2] = useState(config.buffer_caps[1] ?? 5)
+
+  const onReset = useCallback(() => {
+    setConfig({ n_jobs: Number(jobs) || 100, buffer_caps: [Number(cap1)||5, Number(cap2)||5] })
+    reset()
+  }, [reset, setConfig, jobs, cap1, cap2])
 
   return (
     <div>
       <h2>Controls</h2>
       <div className="row">
-        {!polling ? (
-          <button onClick={startPolling}>Start Polling</button>
+        <button onClick={onReset}>Reset</button>
+        {!running ? (
+          <button onClick={begin}>Begin Simulation</button>
         ) : (
-          <button onClick={stopPolling}>Stop Polling</button>
+          <button onClick={stop}>Stop</button>
         )}
       </div>
-      <div className="row">
-        <button onClick={onReset}>Reset</button>
-        <button onClick={onStep}>Step</button>
+      <div className="row" style={{ marginTop: 8 }}>
+        <label>Jobs</label>
+        <input type="number" min="1" value={jobs} onChange={(e)=>setJobs(e.target.value)} style={{ width: 80 }} />
       </div>
-      <div className="row">
-        <label htmlFor="speed">Station Speed</label>
-        <select id="speed" value={selectedAction} onChange={onSpeed}>
-          <option value={0}>Slow (0.8x)</option>
-          <option value={1}>Nominal (1.0x)</option>
-          <option value={2}>Fast (1.2x)</option>
-        </select>
+      <div className="row" style={{ marginTop: 8 }}>
+        <label>B12 Cap</label>
+        <input type="number" min="0" value={cap1} onChange={(e)=>setCap1(e.target.value)} style={{ width: 80, marginLeft: 8 }} />
+        <label style={{ marginLeft: 8 }}>B23 Cap</label>
+        <input type="number" min="0" value={cap2} onChange={(e)=>setCap2(e.target.value)} style={{ width: 80 }} />
       </div>
     </div>
   )
