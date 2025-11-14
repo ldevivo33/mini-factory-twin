@@ -13,4 +13,9 @@ Sprint 2: Refactored the backend from a gym driven sim to a handmade DES kernel 
     This option opens up paths for operations + RL as seen in industry. We are lookin at manufacturing on the micro scale of operations so the thigns we will optimzie for are ordering of jobs, staff allotment for failures and optimizing, etc. Other paths would have been larger scale throughputs of say a whole factory which could be interesting with more diverse assemblies (i.e. parallel lines and decision , bottlenecks). Or even larger scale like throughput of entire factories over months and years and macro decisions there. 
     Overall turning into a more industrial eng/systems sim project which is cool but kind of ironic.
     https://www.autodesk.com/blogs/design-and-manufacturing/how-discrete-event-simulation-helps-manufacturers-make-better-decisions/
-    
+
+Critical Next Steps : 
+ - Improve Dynamics for interesting results w/ things like failures  
+ - Begin RL Modelling live
+ - Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list. 
+ 
