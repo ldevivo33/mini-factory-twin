@@ -48,3 +48,53 @@ button:hover { border-color: var(--accent); }
 
 .kpis-row { display: flex; gap: 8px; align-items: stretch; }
 .section-title { margin: 12px 0 6px; font-size: 0.9rem; color: var(--muted); }
+
+.station-icon {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.station-icon--alert { color: #fecaca; }
+.station-icon--repair { color: #fed7aa; }
+.repair-bar {
+  width: 90px;
+  height: 6px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.6);
+  overflow: hidden;
+  border: 1px solid rgba(248, 250, 252, 0.1);
+}
+.repair-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fb923c);
+  transition: width 0.4s ease;
+}
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.timeline li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #111319;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.6);
+}
+.timeline-title { font-weight: 600; font-size: 0.9rem; }
+.timeline-meta { font-size: 0.75rem; color: var(--muted); }

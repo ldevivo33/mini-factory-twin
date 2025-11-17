@@ -9,11 +9,14 @@ import numpy as np
 
 @dataclass
 class _Station:
-    status: str = "idle"  # 'idle' | 'working' | 'blocked'
+    status: str = "idle"  # 'idle' | 'working' | 'blocked' | 'down'
     starved: bool = False
     end_time: Optional[float] = None
     util_ema: float = 0.0
     has_finished_part: bool = False  # true if blocked with finished part not yet transferred
+    job_id: Optional[int] = None
+    repairing: bool = False
+    repair_eta: Optional[float] = None
 
 
 class FactorySim:
@@ -27,6 +30,8 @@ class FactorySim:
 
     # Event types
     EVT_SERVICE_COMPLETE = "service_complete"
+    EVT_MACHINE_FAILURE = "machine_failure"
+    EVT_REPAIR_COMPLETE = "repair_complete"
 
     def __init__(
         self,
@@ -35,6 +40,9 @@ class FactorySim:
         proc_means: Sequence[float] = (4.0, 5.0, 4.5),
         proc_dists: Union[str, Sequence[str]] = "uniform",
         util_alpha: float = 0.1,
+        fail_rate: float = 0.01,
+        repair_time: float = 60.0,
+        workers: int = 3,
     ) -> None:
         assert n_stations >= 1, "Need at least one station"
         self.n_stations = int(n_stations)
@@ -56,6 +64,11 @@ class FactorySim:
             assert len(dists) == self.n_stations, "proc_dists length must equal n_stations"
             self.proc_dists = dists
         self.util_alpha = float(util_alpha)
+        self.fail_rate = float(fail_rate)
+        self.repair_time = float(repair_time)
+        self.workers_total = int(workers)
+        self.workers_available = self.workers_total
+        self.repair_queue: List[int] = []
 
         # RNG and state
         self.rng: Optional[np.random.Generator] = None
@@ -86,6 +99,8 @@ class FactorySim:
         self._current_speed = 1.0
         self._throughput_total = 0
         self._throughput_since_decision: int = 0
+        self.workers_available = self.workers_total
+        self.repair_queue = []
         self.buffers = [0 for _ in range(max(0, self.n_stations - 1))]
         self.stations = [_Station() for _ in range(self.n_stations)]
 
@@ -143,15 +158,20 @@ class FactorySim:
                     else:
                         can_pull = self.buffers[i - 1] > 0
                     if can_pull:
+                        job_id: Optional[int] = None
                         if i == 0:
-                            self.job_queue.pop(0)
-                        if i > 0:
+                            job_id = self.job_queue.pop(0)
+                        else:
                             self.buffers[i - 1] -= 1
+                        st.job_id = job_id
                         st.starved = False
                         st.status = "working"
                         dur = self._sample_proc_time(i, self._current_speed)
                         st.end_time = self.time + dur
                         self._schedule(st.end_time, self.EVT_SERVICE_COMPLETE, i)
+                        if self.rng is not None and self.rng.random() < self.fail_rate:
+                            fail_time = self.time + self.rng.uniform(0.0, dur)
+                            self._schedule(fail_time, self.EVT_MACHINE_FAILURE, i)
                         progress = True
                     else:
                         st.starved = True
@@ -164,10 +184,17 @@ class FactorySim:
         while self._event_queue:
             t, _, etype, sid = heapq.heappop(self._event_queue)
             self._advance_time(t)
+            handled = False
             if etype == self.EVT_SERVICE_COMPLETE:
-                self._handle_service_complete(sid)
+                handled = self._handle_service_complete(sid)
+            elif etype == self.EVT_MACHINE_FAILURE:
+                handled = self._handle_machine_failure(sid)
+            elif etype == self.EVT_REPAIR_COMPLETE:
+                handled = self._handle_repair_complete(sid)
+            if handled:
                 self._last_event_type = etype
                 self._last_event_sid = sid
+                self.apply_action()
                 break
         snap = self.get_snapshot()
         self._t_last_decision = float(self.time)
@@ -179,17 +206,31 @@ class FactorySim:
         working = 0
         blocked = 0
         starved = 0
+        down = 0
         avg_proc_time = float(sum(self.proc_means) / len(self.proc_means)) if self.proc_means else 0.0
         avg_proc_speed = float(1.0 / avg_proc_time) if avg_proc_time > 0 else 0.0
         for st in self.stations:
-            status_code = 0 if st.status == "idle" else (1 if st.status == "working" else 2)
+            if st.status == "idle":
+                status_code = 0
+            elif st.status == "working":
+                status_code = 1
+            elif st.status == "blocked":
+                status_code = 2
+            else:
+                status_code = 3
             remaining = max(0.0, (st.end_time or self.time) - self.time) if st.status == "working" else 0.0
+            repair_remaining = 0.0
+            if st.repair_eta is not None and st.status == "down":
+                repair_remaining = max(0.0, st.repair_eta - self.time)
             stations_list.append({
                 "status": status_code,
                 "remaining": float(remaining),
                 "util_ema": float(st.util_ema),
                 "starved": bool(st.starved),
                 "blocked": bool(st.status == "blocked"),
+                "down": bool(st.status == "down"),
+                "repairing": bool(st.repairing),
+                "repair_remaining": float(repair_remaining),
             })
             if st.status == "working":
                 working += 1
@@ -197,6 +238,8 @@ class FactorySim:
                 blocked += 1
             if st.starved:
                 starved += 1
+            if st.status == "down":
+                down += 1
         wip = int(sum(self.buffers) + working + blocked)
         return {
             "t": float(self.time),
@@ -209,6 +252,9 @@ class FactorySim:
             "wip": int(wip),
             "blocked": int(blocked),
             "starved": int(starved),
+            "down": int(down),
+            "workers_available": int(self.workers_available),
+            "workers_total": int(self.workers_total),
             "avg_processing_time": float(avg_proc_time),
             "avg_processing_speed": float(avg_proc_speed),
         }
@@ -234,15 +280,21 @@ class FactorySim:
         while self.jobs_completed < self.jobs_total and self._event_queue:
             t, _, etype, sid = heapq.heappop(self._event_queue)
             self._advance_time(t)
+            handled = False
             if etype == self.EVT_SERVICE_COMPLETE:
-                self._handle_service_complete(sid)
+                handled = self._handle_service_complete(sid)
+            elif etype == self.EVT_MACHINE_FAILURE:
+                handled = self._handle_machine_failure(sid)
+            elif etype == self.EVT_REPAIR_COMPLETE:
+                handled = self._handle_repair_complete(sid)
 
-            if self._record_history:
-                wip = sum(self.buffers) + sum(1 for s in self.stations if s.status != "idle")
-                self._wip_history.append(wip)
+            if handled:
+                if self._record_history:
+                    wip = sum(self.buffers) + sum(1 for s in self.stations if s.status != "idle")
+                    self._wip_history.append(wip)
 
-            # IMPORTANT: after each event, greedily start what can run
-            self.apply_action()
+                # IMPORTANT: after each event, greedily start what can run
+                self.apply_action()
 
         return self.get_summary()
 
@@ -272,10 +324,13 @@ class FactorySim:
             base = float(self.rng.uniform(0.0, 2.0 * mean))
         return max(0.01, base / max(1e-6, float(speed)))
 
-    def _handle_service_complete(self, sid: int) -> None:
+    def _handle_service_complete(self, sid: int) -> bool:
         st = self.stations[sid]
+        if st.status != "working" or st.end_time is None or abs(st.end_time - self.time) > 1e-9:
+            return False
         st.status = "idle"
         st.end_time = self.time
+        st.job_id = None
         if sid == self.n_stations - 1:
             self._throughput_total += 1
             self._throughput_since_decision = getattr(self, "_throughput_since_decision", 0) + 1
@@ -288,12 +343,72 @@ class FactorySim:
             else:
                 st.status = "blocked"
                 st.has_finished_part = True
+        return True
+
+    def _handle_machine_failure(self, sid: int) -> bool:
+        if sid < 0 or sid >= self.n_stations:
+            return False
+        st = self.stations[sid]
+        if st.status != "working":
+            return False
+        if sid == 0:
+            if st.job_id is not None:
+                self.job_queue.insert(0, st.job_id)
+                st.job_id = None
+        else:
+            self.buffers[sid - 1] += 1
+        st.status = "down"
+        st.starved = False
+        st.has_finished_part = False
+        st.end_time = None
+        st.repairing = False
+        st.repair_eta = None
+        if self.workers_available > 0:
+            self._assign_repair_worker(sid)
+        else:
+            if sid not in self.repair_queue:
+                self.repair_queue.append(sid)
+        return True
+
+    def _handle_repair_complete(self, sid: int) -> bool:
+        if sid < 0 or sid >= self.n_stations:
+            return False
+        st = self.stations[sid]
+        if st.status != "down":
+            return False
+        st.status = "idle"
+        st.starved = False
+        st.has_finished_part = False
+        st.end_time = None
+        st.repairing = False
+        st.repair_eta = None
+        self.workers_available = min(self.workers_available + 1, self.workers_total)
+        if self.repair_queue:
+            next_sid = self.repair_queue.pop(0)
+            if not self._assign_repair_worker(next_sid):
+                self.repair_queue.insert(0, next_sid)
+        return True
+
+    def _assign_repair_worker(self, sid: int) -> bool:
+        if sid < 0 or sid >= self.n_stations:
+            return False
+        if self.workers_available <= 0:
+            return False
+        st = self.stations[sid]
+        if st.status != "down" or st.repairing:
+            return False
+        st.repairing = True
+        st.repair_eta = self.time + self.repair_time
+        self.workers_available -= 1
+        self._schedule(st.repair_eta, self.EVT_REPAIR_COMPLETE, sid)
+        return True
 
     def get_summary(self) -> Dict[str, float]:
         total_time = float(self.time)
         avg_wip = float(np.mean(self._wip_history)) if self._wip_history else 0.0
         avg_util = float(np.mean([s.util_ema for s in self.stations])) if self.stations else 0.0
         throughput_rate = self.jobs_completed / total_time if total_time > 0 else 0.0
+        down_stations = sum(1 for s in self.stations if s.status == "down")
         return {
             "total_jobs": self.jobs_total,
             "jobs_completed": self.jobs_completed,
@@ -301,4 +416,7 @@ class FactorySim:
             "avg_wip": avg_wip,
             "avg_util": avg_util,
             "throughput_rate": throughput_rate,
+            "down_stations": down_stations,
+            "workers_available": self.workers_available,
+            "workers_total": self.workers_total,
         }

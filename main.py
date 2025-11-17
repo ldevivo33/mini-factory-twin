@@ -18,6 +18,9 @@ class StationModel(BaseModel):
     util_ema: float
     starved: bool
     blocked: bool
+    down: bool
+    repairing: bool
+    repair_remaining: float
 
 
 class SnapshotModel(BaseModel):
@@ -31,6 +34,9 @@ class SnapshotModel(BaseModel):
     wip: int
     blocked: int
     starved: int
+    down: int
+    workers_available: int
+    workers_total: int
     avg_processing_time: float
     avg_processing_speed: float
 
@@ -43,6 +49,9 @@ class ResetRequest(BaseModel):
     proc_means: List[float] = Field(default_factory=lambda: [4.0, 5.0, 4.5])
     proc_dists: Union[str, List[str]] = "uniform"
     util_alpha: float = 0.1
+    fail_rate: float = 0.01
+    repair_time: float = 60.0
+    workers: int = 3
 
 
 class StepRequest(BaseModel):
@@ -56,6 +65,9 @@ class SummaryModel(BaseModel):
     avg_wip: float
     avg_util: float
     throughput_rate: float
+    down_stations: int
+    workers_available: int
+    workers_total: int
 
 
 class ServerState:
@@ -96,6 +108,9 @@ def sim_reset(req: ResetRequest):
         proc_means=req.proc_means,
         proc_dists=proc_dists,
         util_alpha=req.util_alpha,
+        fail_rate=req.fail_rate,
+        repair_time=req.repair_time,
+        workers=req.workers,
     )
     snap = state.sim.reset(seed=req.seed, n_jobs=req.n_jobs)
     return SnapshotModel(**snap)

@@ -14,8 +14,9 @@ Sprint 2: Refactored the backend from a gym driven sim to a handmade DES kernel 
     Overall turning into a more industrial eng/systems sim project which is cool but kind of ironic.
     https://www.autodesk.com/blogs/design-and-manufacturing/how-discrete-event-simulation-helps-manufacturers-make-better-decisions/
 
+Sprint 2.1: Implemented random failures and maintenance worker dynamics into DES + frontend. 
+
 Critical Next Steps : 
- - Improve Dynamics for interesting results w/ things like failures  
  - Begin RL Modelling live
  - Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list. 
  
