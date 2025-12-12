@@ -17,6 +17,9 @@ Sprint 2: Refactored the backend from a gym driven sim to a handmade DES kernel 
 Sprint 2.1: Implemented random failures and maintenance worker dynamics into DES + frontend. 
 
 Critical Next Steps : 
- - Begin RL Modelling live
+RL most imporatant ! reference list ...
+
+- basic experimentlogging, deterministic seeding
+- Begin RL Modelling live
  - Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list. 
  
