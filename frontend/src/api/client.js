@@ -33,3 +33,19 @@ export const simSummary = async () => {
   const { data } = await api.get('/sim/summary')
   return data
 }
+
+// Experiments endpoints
+export const getExperiments = async (skip = 0, limit = 20) => {
+  const { data } = await api.get(`/experiments?skip=${skip}&limit=${limit}`)
+  return data
+}
+
+export const deleteExperiment = async (id) => {
+  const { data } = await api.delete(`/experiments/${id}`)
+  return data
+}
+
+export const deleteStaleExperiments = async () => {
+  const { data } = await api.delete('/experiments')
+  return data
+}

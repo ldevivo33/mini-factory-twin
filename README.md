@@ -14,12 +14,13 @@ Sprint 2: Refactored the backend from a gym driven sim to a handmade DES kernel 
     Overall turning into a more industrial eng/systems sim project which is cool but kind of ironic.
     https://www.autodesk.com/blogs/design-and-manufacturing/how-discrete-event-simulation-helps-manufacturers-make-better-decisions/
 
-Sprint 2.1: Implemented random failures and maintenance worker dynamics into DES + frontend. 
+Sprint 2.1: Implemented random failures and maintenance worker dynamics into DES + frontend.
 
-Critical Next Steps : 
-RL most imporatant ! reference list ...
+Sprint 2.2: Added PostgreSQL persistence for experiment tracking. Each simulation run is now logged with its configuration and results. Added frontend panel to view past experiments with delete functionality. Batch file for streamlined local startup.
 
-- basic experimentlogging, deterministic seeding
-- Begin RL Modelling live
- - Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list. 
+Critical Next Steps :
+RL most important!
+
+- Begin RL modelling / training scripts
+- Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list 
  

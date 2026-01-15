@@ -6,3 +6,4 @@ gymnasium
 numpy
 psycopg2-binary
 simpy
+python-dotenv

@@ -1,7 +1,9 @@
 *.env
+!.env.example
 frontend/node_modules/
-.env
 __pycache__/
 dist/
 build/
 .venv/
+tmpclaude-*
+.claude/
