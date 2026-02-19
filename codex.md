@@ -16,6 +16,17 @@
 3. FastAPI serves simulation state and experiment CRUD.
 4. TypeScript frontend consumes typed API models.
 
+## Rust Simulator Migration (Implemented)
+- Added Rust PyO3 crate at `rust-sim/` (`mft_rust_sim` module).
+- Added Python Rust adapter at `backend/sim/rust_bridge.py`.
+- `backend/sim/factory_sim.py` now selects backend via `MFT_SIM_BACKEND`:
+  - `auto` (default): Rust when installed, Python fallback otherwise
+  - `rust`: require Rust extension
+  - `python`: force legacy Python DES
+- Preserved Python simulator as fallback at `backend/sim/factory_sim_py.py`.
+- Kept RL in Python and fixed Gym termination conditions in `backend/rl/factory_env.py`.
+- Added Python training entrypoint `backend/rl/train_sb3.py` (random + optional PPO).
+
 ## Frontend TypeScript Migration (Completed)
 - Converted frontend source from JS/JSX to TS/TSX.
 - Added shared domain types in `frontend/src/types.ts`.
@@ -28,4 +39,6 @@
 - Dev: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Build: `npm run build`
-
+- Rust extension build: `cd rust-sim && maturin develop --release`
+- RL random baseline: `python -m backend.rl.train_sb3 --mode random --backend auto`
+- RL PPO (optional): `python -m backend.rl.train_sb3 --mode ppo --backend auto`

@@ -11,7 +11,7 @@ from backend.sim.factory_sim import FactorySim
 
 class MiniFactoryEnv(gym.Env):
     """
-    Gymnasium wrapper around the SimPy-based FactorySim.
+    Gymnasium wrapper around FactorySim (Rust-backed when available).
 
     - Actions: Discrete speed multipliers [0.8, 1.0, 1.2]
     - Observations: [normalized buffers..., station util_ema...]
@@ -77,7 +77,8 @@ class MiniFactoryEnv(gym.Env):
         super().reset(seed=seed)
         self._last_action = 1
         self._last_reward = 0.0
-        self.sim.reset(seed=seed)
+        n_jobs = int(options.get("n_jobs", 100)) if options else 100
+        self.sim.reset(seed=seed, n_jobs=n_jobs)
         info = self.sim.get_snapshot()
         obs = self._observe(info)
         self._last_obs = obs
@@ -97,7 +98,7 @@ class MiniFactoryEnv(gym.Env):
         self._last_obs = obs
         self._last_reward = float(reward)
 
-        terminated = False
+        terminated = bool(self.sim.jobs_total > 0 and self.sim.jobs_completed >= self.sim.jobs_total)
         truncated = False
         return obs, float(reward), terminated, truncated, self._info_dict(info)
 

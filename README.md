@@ -1,26 +1,58 @@
 # mini-factory-twin
-An AI-driven factory twin modelling a manufacturing assembly line that learns to optimize throughput and maintenance scheduling in real time using RL / physics.
 
-Tech Stack : 
-    Python Backend w/ gymnasium + FastAPI + Pydantic + SQL Alchemy
-    React Frontend w/ Three.JS + Vite
-    
-Project Progress:
-Sprint 1: Built simple MVP to get the project up and running. Implemented basic back-end using FastAPI for RESTful API quickly (via Uvicorn, Pydantic, SQLAlchemy), connecting the gymnasium based RL simulation to the PostgreSQL database. Built a React based frontend using Three.JS for 3-D visualization for a clean UI of the simulation.
-    Have a lot of work to do, mainly in understanding the physcis and fleshing it out to become more complex/dynamic, to allow for understandings of real factory processes and hopefully see some interesting RL. 
+AI-driven factory twin for assembly-line simulation, 3D visualization, and RL control.
 
-Sprint 2: Refactored the backend from a gym driven sim to a handmade DES kernel to reflect industry standard because it allows for a more independent and reliable simulation of the factory. Obviously front end had to be refactored to reflect these changes. Still have to run simulation step by step for vis and RL , but have the option to run full simulations for maybe lager experiments. Working towards a setup that allows for actual insightful work (previously it was too reliant on making RL easy which was essentially useless). 
-    This option opens up paths for operations + RL as seen in industry. We are lookin at manufacturing on the micro scale of operations so the thigns we will optimzie for are ordering of jobs, staff allotment for failures and optimizing, etc. Other paths would have been larger scale throughputs of say a whole factory which could be interesting with more diverse assemblies (i.e. parallel lines and decision , bottlenecks). Or even larger scale like throughput of entire factories over months and years and macro decisions there. 
-    Overall turning into a more industrial eng/systems sim project which is cool but kind of ironic.
-    https://www.autodesk.com/blogs/design-and-manufacturing/how-discrete-event-simulation-helps-manufacturers-make-better-decisions/
+## Architecture
 
-Sprint 2.1: Implemented random failures and maintenance worker dynamics into DES + frontend.
+- Backend API: Python (`FastAPI`, `SQLAlchemy`, `Pydantic`)
+- Simulator:
+  - Rust DES engine (`rust-sim`, PyO3 module `mft_rust_sim`)
+  - Python DES fallback (`backend/sim/factory_sim_py.py`)
+- RL environment/training: Python (`gymnasium`, optional `stable-baselines3`)
+- Frontend: TypeScript + React + Three.js + Vite
 
-Sprint 2.2: Added PostgreSQL persistence for experiment tracking. Each simulation run is now logged with its configuration and results. Added frontend panel to view past experiments with delete functionality. Batch file for streamlined local startup.
+## Backend Simulator Selection
 
-Critical Next Steps :
-RL most important!
+Set `MFT_SIM_BACKEND`:
 
-- Begin RL modelling / training scripts
-- Allow for flexibility of the assembly line setup i.e. more stations, parallel stations, different initial task list 
- 
+- `auto` (default): use Rust extension if available, else Python fallback
+- `rust`: require Rust extension, fail if unavailable
+- `python`: force Python simulator
+
+## Rust Simulator Build
+
+From repo root:
+
+```bash
+cd rust-sim
+pip install maturin
+maturin develop --release
+```
+
+This installs the `mft_rust_sim` Python extension into your active environment.
+
+## Python RL Training
+
+Random rollout baseline:
+
+```bash
+python -m backend.rl.train_sb3 --mode random --backend auto --episodes 3
+```
+
+PPO training (optional):
+
+```bash
+pip install stable-baselines3
+python -m backend.rl.train_sb3 --mode ppo --backend auto --timesteps 5000
+```
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+npm run typecheck
+npm run build
+npm run dev
+```
+

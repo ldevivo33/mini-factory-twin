@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "mft-rust-sim"
+version = "0.1.0"
+description = "Rust discrete-event simulator for mini-factory-twin"
+requires-python = ">=3.10"
+
+[tool.maturin]
+module-name = "mft_rust_sim"
+bindings = "pyo3"
+
