@@ -1,7 +1,22 @@
 import { create } from 'zustand'
 import { simReset, simStep, simState, simSummary } from '../api/client'
+import type { FailureEvent, ResetConfig, Snapshot, Summary } from '../types'
 
-const appendFailureEvent = (history, snapshot) => {
+interface FactoryStore {
+  config: ResetConfig
+  running: boolean
+  snapshot: Snapshot | null
+  prevSnapshot: Snapshot | null
+  summary: Summary | null
+  failureLog: FailureEvent[]
+  setConfig: (partial: Partial<ResetConfig>) => void
+  reset: () => Promise<void>
+  fetchState: () => Promise<void>
+  begin: () => Promise<void>
+  stop: () => void
+}
+
+const appendFailureEvent = (history: FailureEvent[], snapshot: Snapshot): FailureEvent[] => {
   const evt = snapshot?.event
   if (!evt || evt.type !== 'machine_failure') return history
   const entry = {
@@ -16,7 +31,7 @@ const appendFailureEvent = (history, snapshot) => {
   return next
 }
 
-export const useFactoryStore = create((set, get) => ({
+export const useFactoryStore = create<FactoryStore>((set, get) => ({
   // Config we send with /sim/reset (store to normalize buffers etc.)
   config: {
     seed: null,
@@ -85,7 +100,7 @@ export const useFactoryStore = create((set, get) => ({
           }
         }
         await new Promise((r) => setTimeout(r, 150))
-      } catch (e) {
+      } catch {
         set({ running: false })
         break
       }

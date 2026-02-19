@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react'
-import { MeshStandardMaterial } from 'three'
+import { useMemo } from 'react'
 import { Html } from '@react-three/drei'
+import { MeshStandardMaterial } from 'three'
+import type { StationSnapshot } from '../types'
 
 const colors = {
   running: '#22c55e',
@@ -11,12 +12,22 @@ const colors = {
   repairing: '#fb923c',
 }
 
-export default function StationMesh({ position = [0, 0.5, 0], station, repairTime = 60 }) {
-  // Support both legacy and new snapshot shapes
+interface StationMeshProps {
+  position?: [number, number, number]
+  station?: Partial<StationSnapshot>
+  repairTime?: number
+}
+
+export default function StationMesh({
+  position = [0, 0.5, 0],
+  station,
+  repairTime = 60,
+}: StationMeshProps) {
+  // Support both legacy and new snapshot shapes.
   const stateStr = station?.state
   const status = station?.status ?? (stateStr === 'busy' ? 1 : stateStr === 'blocked' ? 2 : 0)
-  const blocked = station?.blocked ?? (stateStr === 'blocked')
-  const starved = station?.starved ?? (stateStr === 'starved')
+  const blocked = station?.blocked ?? stateStr === 'blocked'
+  const starved = station?.starved ?? stateStr === 'starved'
   const isDown = Boolean(station?.down)
   const isRepairing = Boolean(station?.repairing)
   const repairRemaining = Number(station?.repair_remaining ?? 0)
@@ -48,11 +59,10 @@ export default function StationMesh({ position = [0, 0.5, 0], station, repairTim
   const progress = useMemo(() => {
     if (!isRepairing) return 0
     const total = repairTime > 0 ? repairTime : 1
-    const pct = 1 - Math.min(Math.max(repairRemaining / total, 0), 1)
-    return pct
+    return 1 - Math.min(Math.max(repairRemaining / total, 0), 1)
   }, [isRepairing, repairRemaining, repairTime])
 
-  const icon = isRepairing ? '🔧' : isDown ? '❗' : null
+  const icon = isRepairing ? 'R' : isDown ? '!' : null
 
   return (
     <mesh position={position} material={material} castShadow receiveShadow>
@@ -72,3 +82,4 @@ export default function StationMesh({ position = [0, 0.5, 0], station, repairTim
     </mesh>
   )
 }
+

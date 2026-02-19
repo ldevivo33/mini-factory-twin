@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react'
-import { useFactoryStore } from '../state/store.js'
+import { useMemo } from 'react'
+import { useFactoryStore } from '../state/store'
 
 export default function KPIDisplay() {
   const snapshot = useFactoryStore((s) => s.snapshot)
@@ -16,10 +16,12 @@ export default function KPIDisplay() {
   const avgProcTime = snapshot?.avg_processing_time ?? 0
   const avgProcSpeed = snapshot?.avg_processing_speed ?? 0
   const dt = Math.max(0.0001, (snapshot?.t_end ?? 0) - (prev?.t_end ?? snapshot?.t_start ?? 0))
-  const thrPerHour = useMemo(() => throughput / (dt / 3600), [throughput, dt])
-  const downStations = useMemo(() => {
+  const thrPerHour = useMemo<number>(() => throughput / (dt / 3600), [throughput, dt])
+  const downStations = useMemo<string[]>(() => {
     if (!snapshot?.stations) return []
-    return snapshot.stations.map((st, idx) => (st?.down ? `S${idx + 1}` : null)).filter(Boolean)
+    return snapshot.stations
+      .map((st, idx) => (st?.down ? `S${idx + 1}` : null))
+      .filter((station): station is string => station !== null)
   }, [snapshot?.stations])
 
   return (

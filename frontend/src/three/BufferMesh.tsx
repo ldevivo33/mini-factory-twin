@@ -1,11 +1,17 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { MeshStandardMaterial } from 'three'
 
 const SLOT_HEIGHT = 0.18
 const SLOT_GAP = 0.02
 const BASE_THICKNESS = 0.08
 
-export default function BufferMesh({ position = [0, 0, 0], level = 0, capacity = 1 }) {
+interface BufferMeshProps {
+  position?: [number, number, number]
+  level?: number
+  capacity?: number
+}
+
+export default function BufferMesh({ position = [0, 0, 0], level = 0, capacity = 1 }: BufferMeshProps) {
   const safeCapacity = Math.max(0, capacity)
   const safeLevel = Math.max(0, Math.min(safeCapacity, Math.round(level)))
   const stackHeight = safeCapacity > 0 ? safeCapacity * SLOT_HEIGHT + Math.max(0, safeCapacity - 1) * SLOT_GAP : 0

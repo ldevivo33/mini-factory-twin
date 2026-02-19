@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import { getExperiments, deleteExperiment, deleteStaleExperiments } from '../api/client'
+import { useEffect, useState } from 'react'
+import { deleteExperiment, deleteStaleExperiments, getExperiments } from '../api/client'
+import type { ExperimentListItem } from '../types'
 
 export default function ExperimentsPanel() {
-  const [experiments, setExperiments] = useState([])
+  const [experiments, setExperiments] = useState<ExperimentListItem[]>([])
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const fetchExperiments = async () => {
+  const fetchExperiments = async (): Promise<void> => {
     setLoading(true)
     try {
       const data = await getExperiments()
@@ -19,11 +20,11 @@ export default function ExperimentsPanel() {
 
   useEffect(() => {
     if (expanded) {
-      fetchExperiments()
+      void fetchExperiments()
     }
   }, [expanded])
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number): Promise<void> => {
     try {
       await deleteExperiment(id)
       setExperiments((prev) => prev.filter((e) => e.id !== id))
@@ -32,10 +33,10 @@ export default function ExperimentsPanel() {
     }
   }
 
-  const handleClearStale = async () => {
+  const handleClearStale = async (): Promise<void> => {
     try {
       await deleteStaleExperiments()
-      fetchExperiments()
+      void fetchExperiments()
     } catch (e) {
       console.error('Failed to clear stale experiments:', e)
     }
@@ -56,7 +57,7 @@ export default function ExperimentsPanel() {
           userSelect: 'none',
         }}
       >
-        <span style={{ fontSize: '0.8rem' }}>{expanded ? '▼' : '▶'}</span>
+        <span style={{ fontSize: '0.8rem' }}>{expanded ? 'v' : '>'}</span>
         <h2 style={{ margin: 0 }}>Past Experiments</h2>
         <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
           ({completedCount} completed{staleCount > 0 ? `, ${staleCount} stale` : ''})
@@ -66,11 +67,11 @@ export default function ExperimentsPanel() {
       {expanded && (
         <div style={{ marginTop: '0.75rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <button onClick={fetchExperiments} disabled={loading}>
+            <button onClick={() => void fetchExperiments()} disabled={loading}>
               {loading ? 'Loading...' : 'Refresh'}
             </button>
             {staleCount > 0 && (
-              <button onClick={handleClearStale} style={{ background: '#dc2626' }}>
+              <button onClick={() => void handleClearStale()} style={{ background: '#dc2626' }}>
                 Clear {staleCount} Stale
               </button>
             )}
@@ -107,14 +108,16 @@ export default function ExperimentsPanel() {
                         </span>
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        {exp.makespan ? `${exp.makespan.toFixed(1)}s` : '-'}
+                        {typeof exp.makespan === 'number' ? `${exp.makespan.toFixed(1)}s` : '-'}
                       </td>
                       <td style={{ padding: '0.25rem' }}>
-                        {exp.throughput_rate ? `${exp.throughput_rate.toFixed(3)}/s` : '-'}
+                        {typeof exp.throughput_rate === 'number'
+                          ? `${exp.throughput_rate.toFixed(3)}/s`
+                          : '-'}
                       </td>
                       <td style={{ padding: '0.25rem' }}>
                         <button
-                          onClick={() => handleDelete(exp.id)}
+                          onClick={() => void handleDelete(exp.id)}
                           style={{
                             padding: '0.1rem 0.4rem',
                             fontSize: '0.7rem',
@@ -135,3 +138,4 @@ export default function ExperimentsPanel() {
     </div>
   )
 }
+

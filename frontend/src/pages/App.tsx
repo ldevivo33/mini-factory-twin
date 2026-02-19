@@ -1,15 +1,15 @@
-import React, { useEffect } from 'react'
-import Scene from '../three/Scene.jsx'
-import ControlsPanel from '../components/ControlsPanel.jsx'
-import KPIDisplay from '../components/KPIDisplay.jsx'
-import ExperimentsPanel from '../components/ExperimentsPanel.jsx'
-import { useFactoryStore } from '../state/store.js'
+import { useEffect } from 'react'
+import Scene from '../three/Scene'
+import ControlsPanel from '../components/ControlsPanel'
+import KPIDisplay from '../components/KPIDisplay'
+import ExperimentsPanel from '../components/ExperimentsPanel'
+import { useFactoryStore } from '../state/store'
 
 export default function App() {
   const reset = useFactoryStore((s) => s.reset)
 
   useEffect(() => {
-    reset(null)
+    void reset()
   }, [reset])
 
   return (

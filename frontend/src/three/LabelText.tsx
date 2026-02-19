@@ -1,9 +1,15 @@
-import React from 'react'
+import type { ReactNode } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 
 // Renders a camera-facing label anchored to a world position.
 // The label will remain above the target as the camera moves.
-export default function LabelText({ children, position = [0, 0, 0], offsetY = 1.0 }) {
+interface LabelTextProps {
+  children: ReactNode
+  position?: [number, number, number]
+  offsetY?: number
+}
+
+export default function LabelText({ children, position = [0, 0, 0], offsetY = 1.0 }: LabelTextProps) {
   return (
     <Billboard position={position} follow lockX={false} lockY={false} lockZ={false}>
       <Text
